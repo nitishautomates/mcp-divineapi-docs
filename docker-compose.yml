@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  docs-mcp:
+    build: .
+    ports:
+      - "8004:8000"
+    environment:
+      - MCP_TRANSPORT=http
+      - MCP_HOST=${MCP_HOST:-mcp.divineapi.com}
+    restart: unless-stopped
