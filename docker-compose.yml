@@ -8,4 +8,7 @@ services:
     environment:
       - MCP_TRANSPORT=http
       - MCP_HOST=${MCP_HOST:-mcp.divineapi.com}
+      # Gate the server behind these when set (provide via .env); leave unset to stay open.
+      - DIVINE_API_KEY=${DIVINE_API_KEY:-}
+      - DIVINE_AUTH_TOKEN=${DIVINE_AUTH_TOKEN:-}
     restart: unless-stopped

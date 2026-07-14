@@ -2,13 +2,26 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "com.divineapi/docs",
   "title": "Divine API - Documentation",
-  "description": "Public read-only MCP reference for the DivineAPI REST API: endpoints, parameters, response fields, auth rules, and real example responses.",
-  "version": "1.0.0",
+  "description": "Read-only MCP reference for the DivineAPI REST API: endpoints, parameters, response fields, auth rules, and real example responses.",
+  "version": "1.1.0",
   "remotes": [
     {
       "type": "streamable-http",
       "url": "https://mcp.divineapi.com/docs/mcp",
-      "headers": []
+      "headers": [
+        {
+          "name": "X-Divine-Api-Key",
+          "description": "Your Divine API key. Get it at https://divineapi.com/api-keys",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "X-Divine-Auth-Token",
+          "description": "Your Divine API auth (bearer) token. Get it at https://divineapi.com/api-keys",
+          "isRequired": true,
+          "isSecret": true
+        }
+      ]
     }
   ]
 }

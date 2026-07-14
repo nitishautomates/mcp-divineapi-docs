@@ -307,7 +307,7 @@ Tools:
   get_playbook()             - the global rules: auth, error semantics, selectors, field formats, house systems, and what not to do
   get_example(path)          - a real captured example response body for an endpoint
 
-This server does NOT call the astrology APIs and needs no credentials. To actually run a request, use the divineapi SDK (pip install divineapi / npm install divineapi / composer require divineapi/divineapi) or the data MCP servers at https://mcp.divineapi.com/indian/mcp, https://mcp.divineapi.com/western/mcp, and https://mcp.divineapi.com/horoscope/mcp."""
+This server does NOT call the astrology APIs, but access is gated: send your DivineAPI key + token as X-Divine-Api-Key + X-Divine-Auth-Token headers (or Authorization: Bearer <api_key>:<auth_token>), the same credentials the data MCPs use. To actually run a request, use the divineapi SDK (pip install divineapi / npm install divineapi / composer require divineapi/divineapi) or the data MCP servers at https://mcp.divineapi.com/indian/mcp, https://mcp.divineapi.com/western/mcp, and https://mcp.divineapi.com/horoscope/mcp."""
 
 mcp = FastMCP(
     "divineapi_docs_mcp",
@@ -385,11 +385,61 @@ def get_example(path: str) -> str:
 # HTTP app (module-level, for `uvicorn server:app`)
 # ──────────────────────────────────────────────
 
+import hmac
+
+
+class _DivineAuthMiddleware:
+    """Gate the server behind the DivineAPI key + token.
+
+    Active only when both DIVINE_API_KEY and DIVINE_AUTH_TOKEN are set in the
+    environment; with neither set the server stays open (unchanged local/stdio
+    behavior). A request is allowed if it presents matching credentials as either
+    the X-Divine-Api-Key + X-Divine-Auth-Token headers OR
+    Authorization: Bearer <api_key>:<auth_token> (same shapes the data MCPs
+    accept). Pure-ASGI so MCP streaming is not buffered; OPTIONS preflight passes
+    through for CORS. Comparisons are constant-time."""
+
+    def __init__(self, app, api_key, auth_token):
+        self.app = app
+        self.api_key = api_key
+        self.auth_token = auth_token
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") != "http" or scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1")
+                   for k, v in scope.get("headers", [])}
+        if self._ok(headers):
+            await self.app(scope, receive, send)
+            return
+        body = (b'{"error":"unauthorized: send X-Divine-Api-Key + '
+                b'X-Divine-Auth-Token, or Authorization: Bearer '
+                b'<api_key>:<auth_token>"}')
+        await send({"type": "http.response.start", "status": 401,
+                    "headers": [(b"content-type", b"application/json"),
+                                (b"www-authenticate", b"Bearer")]})
+        await send({"type": "http.response.body", "body": body})
+
+    def _ok(self, headers):
+        key = headers.get("x-divine-api-key")
+        tok = headers.get("x-divine-auth-token")
+        if not (key and tok):
+            auth = headers.get("authorization", "")
+            if auth[:7].lower() == "bearer " and ":" in auth[7:]:
+                key, tok = auth[7:].strip().split(":", 1)
+        if not (key and tok):
+            return False
+        return (hmac.compare_digest(key, self.api_key)
+                and hmac.compare_digest(tok, self.auth_token))
+
+
 def create_http_app():
     """Create the ASGI app for production HTTP deployment with uvicorn.
 
-    Public server: no auth middleware. CORS is opened so browser-based MCP
-    clients can connect."""
+    When DIVINE_API_KEY + DIVINE_AUTH_TOKEN are set in the environment the server
+    is gated behind those credentials (see _DivineAuthMiddleware); with neither
+    set it stays open. CORS is enabled for browser-based MCP clients."""
     from starlette.middleware.cors import CORSMiddleware
 
     application = mcp.streamable_http_app()
@@ -397,9 +447,14 @@ def create_http_app():
         CORSMiddleware,
         allow_origins=["*"],
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["mcp-protocol-version", "mcp-session-id", "Content-Type"],
+        allow_headers=["mcp-protocol-version", "mcp-session-id", "Content-Type",
+                       "Authorization", "X-Divine-Api-Key", "X-Divine-Auth-Token"],
         expose_headers=["mcp-session-id"],
     )
+    api_key = os.environ.get("DIVINE_API_KEY", "")
+    auth_token = os.environ.get("DIVINE_AUTH_TOKEN", "")
+    if api_key and auth_token:
+        return _DivineAuthMiddleware(application, api_key, auth_token)
     return application
 
 
