@@ -321,6 +321,74 @@ def _get_example(path):
 
 
 # ──────────────────────────────────────────────
+# Live credential validation (active DivineAPI key + token)
+# ──────────────────────────────────────────────
+
+# A cheap DivineAPI endpoint used only to confirm a key + token are active.
+_VALIDATE_URL = "https://astroapi-5.divineapi.com/api/v5/daily-horoscope"
+_CREDS_CACHE_TTL = 600.0  # seconds to remember a validation result
+_CREDS_CACHE: dict[tuple[str, str], tuple[float, bool]] = {}
+
+
+async def _validate_divine_creds(api_key: str, auth_token: str) -> bool:
+    """Return True if the DivineAPI key + token are active, False if definitively invalid.
+
+    Checks against a cheap live endpoint (daily-horoscope on astroapi-5) and
+    caches the result per (api_key, auth_token) for _CREDS_CACHE_TTL seconds so
+    repeat MCP requests do not re-hit DivineAPI. DivineAPI legacy hosts answer
+    HTTP 200 with success==3 for an auth failure, so valid == HTTP 200 AND
+    success != 3 (a success of 1, or even a non-auth param error, means the
+    credentials themselves were accepted).
+
+    Fail-CLOSED on a definitive rejection (success==3, or HTTP 401/403). Fail-OPEN
+    on a network error, timeout, or unexpected status (return True, uncached) so a
+    transient DivineAPI outage does not lock out every client. Credential values
+    are never logged.
+    """
+    if not api_key or not auth_token:
+        return False
+    now = time.time()
+    ckey = (api_key, auth_token)
+    cached = _CREDS_CACHE.get(ckey)
+    if cached and cached[0] > now:
+        return cached[1]
+
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(
+                _VALIDATE_URL,
+                files={
+                    "api_key": (None, api_key),
+                    "sign": (None, "aries"),
+                    "h_day": (None, "today"),
+                    "tzone": (None, "5.5"),
+                },
+                headers={"Authorization": f"Bearer {auth_token}"},
+                timeout=8.0,
+            )
+    except Exception:
+        # Network error / timeout: fail-OPEN and do not cache, so the next request
+        # re-checks once DivineAPI is reachable again.
+        return True
+
+    if resp.status_code in (401, 403):
+        valid = False
+    elif resp.status_code == 200:
+        try:
+            data = resp.json()
+        except Exception:
+            data = {}
+        valid = not (isinstance(data, dict) and str(data.get("success")) == "3")
+    else:
+        # Unexpected status (5xx, 429, ...): treat as a transient blip, fail-OPEN
+        # and do not cache.
+        return True
+
+    _CREDS_CACHE[ckey] = (now + _CREDS_CACHE_TTL, valid)
+    return valid
+
+
+# ──────────────────────────────────────────────
 # OAuth Provider -maps OAuth Client ID/Secret to Divine API credentials
 # ──────────────────────────────────────────────
 
@@ -562,6 +630,8 @@ _LOGIN_HTML = """<!DOCTYPE html>
         button:hover { background: #1a1a2e; }
         .help { text-align: center; margin-top: 16px; font-size: 12px; color: #999; }
         .help a { color: #0f3460; }
+        .err { background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb; padding: 10px 12px;
+               border-radius: 8px; font-size: 13px; margin-bottom: 16px; text-align: center; }
     </style>
 </head>
 <body>
@@ -569,6 +639,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
         <div class="logo">&#128302;</div>
         <h1>Connect Divine API</h1>
         <p>Enter your Divine API credentials to connect Divine API tools to Claude.</p>
+        {error}
         <form method="POST" action="/divine-login/submit">
             <input type="hidden" name="pending" value="{pending_id}">
             <label>API Key</label>
@@ -591,24 +662,34 @@ if _TRANSPORT == "http":
     async def divine_login_form(request):
         from starlette.responses import HTMLResponse
         pending_id = request.query_params.get("pending", "")
-        html = _LOGIN_HTML.replace("{pending_id}", pending_id)
+        html = _LOGIN_HTML.replace("{pending_id}", pending_id).replace("{error}", "")
         return HTMLResponse(html)
 
     @mcp.custom_route("/divine-login/submit", methods=["POST"])
     async def divine_login_submit(request):
-        from starlette.responses import RedirectResponse
+        from starlette.responses import HTMLResponse, RedirectResponse
         form = await request.form()
         pending_id = form.get("pending", "")
         api_key = form.get("api_key", "")
         auth_token = form.get("auth_token", "")
 
         if not _auth_provider or not hasattr(_auth_provider, "_pending_auths"):
-            from starlette.responses import HTMLResponse
             return HTMLResponse("Error: Invalid session", status_code=400)
 
+        # Peek without consuming so an invalid attempt can be retried on the same page.
+        pending = _auth_provider._pending_auths.get(pending_id)
+        if not pending:
+            return HTMLResponse("Error: Session expired. Please try connecting again.", status_code=400)
+
+        # Reject fake / inactive DivineAPI credentials before completing the flow.
+        if not await _validate_divine_creds(api_key, auth_token):
+            error_html = '<p class="err">Invalid DivineAPI key or token. Check your credentials and try again.</p>'
+            html = _LOGIN_HTML.replace("{pending_id}", pending_id).replace("{error}", error_html)
+            return HTMLResponse(html, status_code=401)
+
+        # Valid: consume the pending session now and complete the flow.
         pending = _auth_provider._pending_auths.pop(pending_id, None)
         if not pending:
-            from starlette.responses import HTMLResponse
             return HTMLResponse("Error: Session expired. Please try connecting again.", status_code=400)
 
         # Create auth code with Divine API credentials embedded
@@ -678,15 +759,28 @@ class ApiKeyToJwtMiddleware:
                     bearer = v[7:].decode()
                     break
 
-            token = None
+            creds = None
             if api_key and auth_token and not bearer:
-                token = self._mint(api_key, auth_token)
+                creds = (api_key, auth_token)
             elif ":" in bearer:
                 combo_key, _, combo_token = bearer.partition(":")
                 if combo_key and combo_token:
-                    token = self._mint(combo_key.strip(), combo_token.strip())
+                    creds = (combo_key.strip(), combo_token.strip())
 
-            if token:
+            # A real OAuth-issued JWT bearer has no colon and no X-Divine headers,
+            # so it falls through here untouched and is validated by the FastMCP
+            # auth layer. Only the direct-credential shapes are checked live and
+            # rejected before a JWT is minted.
+            if creds:
+                if not await _validate_divine_creds(creds[0], creds[1]):
+                    body = (b'{"error":"unauthorized: invalid or inactive DivineAPI '
+                            b'key or token"}')
+                    await send({"type": "http.response.start", "status": 401,
+                                "headers": [(b"content-type", b"application/json"),
+                                            (b"www-authenticate", b"Bearer")]})
+                    await send({"type": "http.response.body", "body": body})
+                    return
+                token = self._mint(creds[0], creds[1])
                 new_headers = [(k, v) for k, v in headers_list if k != b"authorization"]
                 new_headers.append((b"authorization", f"Bearer {token}".encode()))
                 scope = dict(scope, headers=new_headers)
