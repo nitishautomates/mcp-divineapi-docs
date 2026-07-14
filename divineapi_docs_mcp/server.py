@@ -430,7 +430,12 @@ class DivineOAuthProvider(OAuthAuthorizationServerProvider):
             "scopes": params.scopes or [],
             "state": params.state,
         }
-        return f"/divine-login?pending={pending_id}"
+        # Public path must include the /docs prefix so nginx routes the login to
+        # THIS container (8004). A bare "/divine-login" resolves to the origin root,
+        # which nginx proxies to the Indian MCP (8001) - it has no idea about this
+        # pending, so the submit 400s. Keep the app-internal route at /divine-login;
+        # only the browser-facing redirect is prefixed.
+        return f"/docs/divine-login?pending={pending_id}"
 
     async def load_authorization_code(self, client: OAuthClientInformationFull, authorization_code: str) -> AuthorizationCode | None:
         data = self._auth_codes.get(authorization_code)
@@ -640,7 +645,7 @@ _LOGIN_HTML = """<!DOCTYPE html>
         <h1>Connect Divine API</h1>
         <p>Enter your Divine API credentials to connect Divine API tools to Claude.</p>
         {error}
-        <form method="POST" action="/divine-login/submit">
+        <form method="POST" action="/docs/divine-login/submit">
             <input type="hidden" name="pending" value="{pending_id}">
             <label>API Key</label>
             <input type="text" name="api_key" placeholder="Your Divine API Key" required>
