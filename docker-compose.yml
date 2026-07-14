@@ -8,7 +8,10 @@ services:
     environment:
       - MCP_TRANSPORT=http
       - MCP_HOST=${MCP_HOST:-mcp.divineapi.com}
-      # Gate the server behind these when set (provide via .env); leave unset to stay open.
+      # DivineAPI credentials (provide via .env). Used as env fallback / gate.
       - DIVINE_API_KEY=${DIVINE_API_KEY:-}
       - DIVINE_AUTH_TOKEN=${DIVINE_AUTH_TOKEN:-}
+      # Stable secret that signs the OAuth/JWT tokens; keep it constant across
+      # restarts so issued tokens survive a rebuild (set in .env on the VPS).
+      - MCP_JWT_SECRET=${MCP_JWT_SECRET:-}
     restart: unless-stopped

@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
 """
-Divine API - Documentation MCP Server (public, read-only)
+Divine API - Documentation MCP Server (read-only reference)
 
 A read-only reference server that answers "how do I use the DivineAPI REST API".
 It does NOT call the live astrology APIs; it serves the already-public developer
 docs (endpoints, parameters, response fields, auth rules, error semantics,
 selectors, field formats, house systems) plus real captured example responses.
 
-Because it exposes only public documentation, this server has NO authentication:
-no API key, no auth token, no OAuth. To actually run astrology requests, use the
-`divineapi` SDK or the data MCP servers at mcp.divineapi.com/{indian,western,horoscope}/mcp.
+Access is gated the same way the data MCP servers are, so this server connects on
+claude.ai web via the "Add custom connector" OAuth flow, and on Claude Desktop /
+Cursor / other clients via direct credentials. Two authentication paths are
+supported in HTTP mode:
+  - OAuth (claude.ai web): the DivineOAuthProvider maps the DivineAPI key + token
+    to an issued JWT, discovered under https://mcp.divineapi.com/docs/...
+  - Direct credentials: X-Divine-Api-Key + X-Divine-Auth-Token headers, or
+    Authorization: Bearer <api_key>:<auth_token> (a colon combo for clients that
+    cannot send custom headers). A pre-auth middleware mints the JWT the MCP auth
+    layer expects, so both paths converge.
+
+To actually run astrology requests, use the `divineapi` SDK or the data MCP
+servers at mcp.divineapi.com/{indian,western,horoscope}/mcp.
 
 Data sources:
   - docs-pack.txt : compact endpoint reference, fetched live at startup from
@@ -21,10 +31,25 @@ Documentation: https://developers.divineapi.com
 import json
 import os
 import re
+import secrets
+import time
 
 import httpx
+import jwt
+from mcp.server.auth.provider import (
+    AccessToken,
+    AuthorizationCode,
+    AuthorizationParams,
+    OAuthAuthorizationServerProvider,
+    RefreshToken,
+    TokenError,
+    construct_redirect_uri,
+)
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
+from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
+from pydantic import AnyUrl
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -34,13 +59,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 _TRANSPORT = os.environ.get("MCP_TRANSPORT", "stdio")
 _MCP_HOST = os.environ.get("MCP_HOST", "mcp.divineapi.com")
+_JWT_SECRET = os.environ.get("MCP_JWT_SECRET", secrets.token_hex(32))
 
 _DOCS_PACK_URL = "https://developers.divineapi.com/docs-pack.txt"
 _PACK_FILENAME = "docs-pack.txt"
 _EXAMPLES_FILENAME = "examples.json"
 
-# Public server: no auth machinery, but still pin the Host header in HTTP mode
-# to defend against DNS-rebinding, mirroring the data MCPs (minus the auth args).
+# Pin the Host header in HTTP mode to defend against DNS-rebinding, mirroring the
+# data MCPs.
 _transport_security = TransportSecuritySettings(
     enable_dns_rebinding_protection=True,
     allowed_hosts=[
@@ -295,6 +321,130 @@ def _get_example(path):
 
 
 # ──────────────────────────────────────────────
+# OAuth Provider -maps OAuth Client ID/Secret to Divine API credentials
+# ──────────────────────────────────────────────
+
+
+class DivineOAuthProvider(OAuthAuthorizationServerProvider):
+    """OAuth provider that uses Divine API Key as client_id and Auth Token as client_secret."""
+
+    def __init__(self, jwt_secret: str):
+        self._jwt_secret = jwt_secret
+        self._clients: dict[str, OAuthClientInformationFull] = {}
+        self._auth_codes: dict[str, dict] = {}
+
+    async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
+        if client_id in self._clients:
+            return self._clients[client_id]
+        auto_client = OAuthClientInformationFull(
+            client_id=client_id,
+            client_secret=None,
+            redirect_uris=['https://claude.ai/oauth/callback', 'https://app.claude.ai/oauth/callback', 'https://claude.ai/api/mcp/auth_callback', 'https://app.claude.ai/api/mcp/auth_callback'],
+            grant_types=['authorization_code', 'refresh_token'],
+            response_types=['code'],
+            token_endpoint_auth_method='client_secret_post',
+            scope='astrology',
+        )
+        self._clients[client_id] = auto_client
+        return auto_client
+
+    async def register_client(self, client_info: OAuthClientInformationFull) -> None:
+        self._clients[client_info.client_id] = client_info
+
+    async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
+        pending_id = secrets.token_urlsafe(16)
+        self._pending_auths = getattr(self, "_pending_auths", {})
+        self._pending_auths[pending_id] = {
+            "client_id": client.client_id,
+            "code_challenge": params.code_challenge,
+            "redirect_uri": str(params.redirect_uri),
+            "redirect_uri_provided_explicitly": params.redirect_uri_provided_explicitly,
+            "scopes": params.scopes or [],
+            "state": params.state,
+        }
+        return f"/divine-login?pending={pending_id}"
+
+    async def load_authorization_code(self, client: OAuthClientInformationFull, authorization_code: str) -> AuthorizationCode | None:
+        data = self._auth_codes.get(authorization_code)
+        if not data or data["client_id"] != client.client_id:
+            return None
+        if time.time() > data["expires_at"]:
+            return None
+        return AuthorizationCode(
+            code=authorization_code,
+            scopes=data["scopes"],
+            expires_at=data["expires_at"],
+            client_id=data["client_id"],
+            code_challenge=data["code_challenge"],
+            redirect_uri=AnyUrl(data["redirect_uri"]),
+            redirect_uri_provided_explicitly=data["redirect_uri_provided_explicitly"],
+        )
+
+    async def exchange_authorization_code(self, client: OAuthClientInformationFull, authorization_code: AuthorizationCode) -> OAuthToken:
+        data = self._auth_codes.pop(authorization_code.code, None)
+        if not data:
+            raise TokenError(error="invalid_grant", error_description="Authorization code not found")
+
+        payload = {
+            "divine_api_key": data.get("divine_api_key", ""),
+            "divine_auth_token": data.get("divine_auth_token", ""),
+            "exp": int(time.time()) + 86400 * 30,
+            "iat": int(time.time()),
+        }
+        access_token = jwt.encode(payload, self._jwt_secret, algorithm="HS256")
+
+        return OAuthToken(
+            access_token=access_token,
+            token_type="Bearer",
+            expires_in=86400 * 30,
+        )
+
+    async def load_refresh_token(self, client: OAuthClientInformationFull, refresh_token: str) -> RefreshToken | None:
+        return None
+
+    async def exchange_refresh_token(self, client: OAuthClientInformationFull, refresh_token: RefreshToken, scopes: list[str]) -> OAuthToken:
+        raise TokenError(error="unsupported_grant_type", error_description="Refresh tokens not supported")
+
+    async def load_access_token(self, token: str) -> AccessToken | None:
+        try:
+            payload = jwt.decode(token, self._jwt_secret, algorithms=["HS256"])
+            return AccessToken(
+                token=token,
+                client_id=payload["divine_api_key"],
+                scopes=[],
+                expires_at=payload.get("exp"),
+                resource=None,
+            )
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
+            return None
+
+    async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
+        pass
+
+
+# Build auth settings for HTTP mode. issuer_url and resource_server_url carry the
+# public /docs path prefix so the OAuth routes resolve under the existing /docs/
+# nginx location (which strips the prefix and proxies to this container on 8004).
+_auth_settings = None
+_auth_provider = None
+if _TRANSPORT == "http":
+    _auth_provider = DivineOAuthProvider(_JWT_SECRET)
+    _auth_settings = AuthSettings(
+        issuer_url=f"https://{_MCP_HOST}/docs",
+        resource_server_url=f"https://{_MCP_HOST}/docs",
+        client_registration_options=ClientRegistrationOptions(
+            enabled=True,
+            valid_scopes=["astrology"],
+            default_scopes=["astrology"],
+        ),
+        revocation_options=RevocationOptions(enabled=True),
+        required_scopes=[],
+    )
+
+
+# ──────────────────────────────────────────────
 # Server initialization
 # ──────────────────────────────────────────────
 
@@ -314,6 +464,8 @@ mcp = FastMCP(
     instructions=_SERVER_INSTRUCTIONS,
     stateless_http=(_TRANSPORT == "http"),
     transport_security=_transport_security,
+    auth=_auth_settings,
+    auth_server_provider=_auth_provider,
 )
 
 
@@ -382,64 +534,174 @@ def get_example(path: str) -> str:
 
 
 # ──────────────────────────────────────────────
-# HTTP app (module-level, for `uvicorn server:app`)
+# OAuth Login Form -/divine-login
 # ──────────────────────────────────────────────
 
-import hmac
+_LOGIN_HTML = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Divine API - Connect Your Account</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: #fff; border-radius: 16px; padding: 40px; max-width: 420px; width: 90%;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .logo { text-align: center; margin-bottom: 24px; font-size: 28px; }
+        h1 { font-size: 22px; color: #1a1a2e; margin-bottom: 8px; text-align: center; }
+        p { color: #666; font-size: 14px; margin-bottom: 24px; text-align: center; }
+        label { display: block; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 6px; }
+        input { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px;
+                font-size: 14px; margin-bottom: 16px; transition: border-color 0.2s; }
+        input:focus { outline: none; border-color: #0f3460; }
+        button { width: 100%; padding: 14px; background: #0f3460; color: #fff; border: none;
+                 border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
+                 transition: background 0.2s; }
+        button:hover { background: #1a1a2e; }
+        .help { text-align: center; margin-top: 16px; font-size: 12px; color: #999; }
+        .help a { color: #0f3460; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">&#128302;</div>
+        <h1>Connect Divine API</h1>
+        <p>Enter your Divine API credentials to connect Divine API tools to Claude.</p>
+        <form method="POST" action="/divine-login/submit">
+            <input type="hidden" name="pending" value="{pending_id}">
+            <label>API Key</label>
+            <input type="text" name="api_key" placeholder="Your Divine API Key" required>
+            <label>Auth Token</label>
+            <input type="password" name="auth_token" placeholder="Your Divine Auth Token" required>
+            <button type="submit">Connect</button>
+        </form>
+        <p class="help">Get your credentials at <a href="https://divineapi.com/api-keys" target="_blank">divineapi.com/api-keys</a></p>
+    </div>
+<script>
+});
+</script>
+</body>
+</html>"""
 
 
-class _DivineAuthMiddleware:
-    """Gate the server behind the DivineAPI key + token.
+if _TRANSPORT == "http":
+    @mcp.custom_route("/divine-login", methods=["GET"])
+    async def divine_login_form(request):
+        from starlette.responses import HTMLResponse
+        pending_id = request.query_params.get("pending", "")
+        html = _LOGIN_HTML.replace("{pending_id}", pending_id)
+        return HTMLResponse(html)
 
-    Active only when both DIVINE_API_KEY and DIVINE_AUTH_TOKEN are set in the
-    environment; with neither set the server stays open (unchanged local/stdio
-    behavior). A request is allowed if it presents matching credentials as either
-    the X-Divine-Api-Key + X-Divine-Auth-Token headers OR
-    Authorization: Bearer <api_key>:<auth_token> (same shapes the data MCPs
-    accept). Pure-ASGI so MCP streaming is not buffered; OPTIONS preflight passes
-    through for CORS. Comparisons are constant-time."""
+    @mcp.custom_route("/divine-login/submit", methods=["POST"])
+    async def divine_login_submit(request):
+        from starlette.responses import RedirectResponse
+        form = await request.form()
+        pending_id = form.get("pending", "")
+        api_key = form.get("api_key", "")
+        auth_token = form.get("auth_token", "")
 
-    def __init__(self, app, api_key, auth_token):
+        if not _auth_provider or not hasattr(_auth_provider, "_pending_auths"):
+            from starlette.responses import HTMLResponse
+            return HTMLResponse("Error: Invalid session", status_code=400)
+
+        pending = _auth_provider._pending_auths.pop(pending_id, None)
+        if not pending:
+            from starlette.responses import HTMLResponse
+            return HTMLResponse("Error: Session expired. Please try connecting again.", status_code=400)
+
+        # Create auth code with Divine API credentials embedded
+        code = secrets.token_urlsafe(32)
+        _auth_provider._auth_codes[code] = {
+            "client_id": pending["client_id"],
+            "divine_api_key": api_key,
+            "divine_auth_token": auth_token,
+            "code_challenge": pending["code_challenge"],
+            "redirect_uri": pending["redirect_uri"],
+            "redirect_uri_provided_explicitly": pending["redirect_uri_provided_explicitly"],
+            "scopes": pending["scopes"],
+            "expires_at": time.time() + 300,
+        }
+
+        # Redirect back to Claude with the auth code
+        redirect_url = construct_redirect_uri(
+            pending["redirect_uri"],
+            code=code,
+            state=pending.get("state"),
+        )
+        return RedirectResponse(url=redirect_url, status_code=302)
+
+
+# ──────────────────────────────────────────────
+# HTTP / ASGI App
+# ──────────────────────────────────────────────
+
+
+class ApiKeyToJwtMiddleware:
+    """ASGI middleware that converts direct DivineAPI credentials into the JWT
+    Bearer token the MCP auth layer expects. Two client shapes are supported:
+
+    1. X-Divine-Api-Key + X-Divine-Auth-Token headers (VS Code, OpenAI, Gemini,
+       custom clients).
+    2. Authorization: Bearer <api_key>:<auth_token> - a single-field credential
+       combo for platforms that cannot send custom headers (e.g. the Claude
+       Messages API MCP connector). A real OAuth-issued JWT never contains a
+       colon, so valid tokens are never touched.
+    """
+
+    def __init__(self, app, jwt_secret):
         self.app = app
-        self.api_key = api_key
-        self.auth_token = auth_token
+        self.jwt_secret = jwt_secret
+
+    def _mint(self, api_key, auth_token):
+        return jwt.encode(
+            {
+                "divine_api_key": api_key,
+                "divine_auth_token": auth_token,
+                "exp": int(time.time()) + 3600,
+                "iat": int(time.time()),
+            },
+            self.jwt_secret,
+            algorithm="HS256",
+        )
 
     async def __call__(self, scope, receive, send):
-        if scope.get("type") != "http" or scope.get("method") == "OPTIONS":
-            await self.app(scope, receive, send)
-            return
-        headers = {k.decode("latin-1").lower(): v.decode("latin-1")
-                   for k, v in scope.get("headers", [])}
-        if self._ok(headers):
-            await self.app(scope, receive, send)
-            return
-        body = (b'{"error":"unauthorized: send X-Divine-Api-Key + '
-                b'X-Divine-Auth-Token, or Authorization: Bearer '
-                b'<api_key>:<auth_token>"}')
-        await send({"type": "http.response.start", "status": 401,
-                    "headers": [(b"content-type", b"application/json"),
-                                (b"www-authenticate", b"Bearer")]})
-        await send({"type": "http.response.body", "body": body})
+        if scope["type"] == "http":
+            headers_list = scope.get("headers", [])
+            headers_dict = {k: v for k, v in headers_list}
+            api_key = headers_dict.get(b"x-divine-api-key", b"").decode()
+            auth_token = headers_dict.get(b"x-divine-auth-token", b"").decode()
+            bearer = ""
+            for k, v in headers_list:
+                if k == b"authorization" and v.startswith(b"Bearer "):
+                    bearer = v[7:].decode()
+                    break
 
-    def _ok(self, headers):
-        key = headers.get("x-divine-api-key")
-        tok = headers.get("x-divine-auth-token")
-        if not (key and tok):
-            auth = headers.get("authorization", "")
-            if auth[:7].lower() == "bearer " and ":" in auth[7:]:
-                key, tok = auth[7:].strip().split(":", 1)
-        if not (key and tok):
-            return False
-        return (hmac.compare_digest(key, self.api_key)
-                and hmac.compare_digest(tok, self.auth_token))
+            token = None
+            if api_key and auth_token and not bearer:
+                token = self._mint(api_key, auth_token)
+            elif ":" in bearer:
+                combo_key, _, combo_token = bearer.partition(":")
+                if combo_key and combo_token:
+                    token = self._mint(combo_key.strip(), combo_token.strip())
+
+            if token:
+                new_headers = [(k, v) for k, v in headers_list if k != b"authorization"]
+                new_headers.append((b"authorization", f"Bearer {token}".encode()))
+                scope = dict(scope, headers=new_headers)
+
+        await self.app(scope, receive, send)
 
 
 def create_http_app():
     """Create the ASGI app for production HTTP deployment with uvicorn.
 
-    When DIVINE_API_KEY + DIVINE_AUTH_TOKEN are set in the environment the server
-    is gated behind those credentials (see _DivineAuthMiddleware); with neither
-    set it stays open. CORS is enabled for browser-based MCP clients."""
+    OAuth (claude.ai web) is handled by the FastMCP auth layer; direct-credential
+    clients are handled by ApiKeyToJwtMiddleware, which mints the JWT the auth
+    layer expects from X-Divine-Api-Key + X-Divine-Auth-Token headers or an
+    Authorization: Bearer <api_key>:<auth_token> combo. CORS is enabled for
+    browser-based MCP clients."""
     from starlette.middleware.cors import CORSMiddleware
 
     application = mcp.streamable_http_app()
@@ -451,11 +713,7 @@ def create_http_app():
                        "Authorization", "X-Divine-Api-Key", "X-Divine-Auth-Token"],
         expose_headers=["mcp-session-id"],
     )
-    api_key = os.environ.get("DIVINE_API_KEY", "")
-    auth_token = os.environ.get("DIVINE_AUTH_TOKEN", "")
-    if api_key and auth_token:
-        return _DivineAuthMiddleware(application, api_key, auth_token)
-    return application
+    return ApiKeyToJwtMiddleware(application, _JWT_SECRET)
 
 
 # Module-level ASGI app for uvicorn (only created in HTTP mode).
