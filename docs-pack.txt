@@ -184,7 +184,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
 /api/v3/career-daily-reading  [astroapi-5.divineapi.com]
   Career Daily Reading: This API allows seamless integration of tarot-based career predictions into your platforms, empowering individuals to make informed decisions about work, growth, and balance.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/chinese-horoscope  [astroapi-5.divineapi.com]
   Chinese Horoscope: Introducing the Chinese Horoscope Prediction API, your gateway to delivering personalized insights from the Chinese zodiac.
@@ -194,22 +194,22 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
 /api/v3/divine-angel-reading  [astroapi-5.divineapi.com]
   Divine Angel Reading: This API allows developers to integrate personalized angel card readings into websites and applications, offering users inspiration, motivation, and clarity in their daily lives.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/dream-come-true-reading  [astroapi-5.divineapi.com]
   Dream Come True Reading: The Dream Come True Reading API draws 1 to 5 tarot cards to deliver a wish-themed reading focused on love, hopes and aspirations.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/egyptian-prediction  [astroapi-5.divineapi.com]
   Egyption Prediction: This API provides users with divinatory guidance rooted in Egypt’s timeless spiritual traditions.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/erotic-love-reading  [astroapi-5.divineapi.com]
   Erotic Love Reading: Integrate this API to provide users with personalized insights into their sensual and emotional energies, helping them enhance their romantic relationships with deeper understanding and excitement.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/ex-flame-reading  [astroapi-5.divineapi.com]
   Ex-Flame Reading: This API helps users understand the emotional patterns, unresolved lessons, and personal growth opportunities that emerge from their previous romantic experiences - enabling
@@ -219,27 +219,27 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
 /api/v3/flirt-love-reading  [astroapi-5.divineapi.com]
   Flirt Love Reading: This API delivers flirtation guidance, compatibility cues, and emotional energy readings, helping users build meaningful romantic interactions with confidence and charm.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/in-depth-love-reading  [astroapi-5.divineapi.com]
   In-Depth Love Reading: This API explores the deeper layers of relationship dynamics, compatibility patterns, and emotional guidance - empowering users with clarity and understanding in their love journeys.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/know-your-friend-reading  [astroapi-5.divineapi.com]
   Know Your Friend Reading: This API helps users understand dynamics, strengths, and growth areas in their relationships - perfect for applications focused on connection and personal discovery.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/made-for-each-other-or-not-reading  [astroapi-5.divineapi.com]
   Made For Each Other Or Not Reading: Introducing the Made For Each Other Or Not API, a powerful tool to assess and analyze compatibility between individuals.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/past-lives-connection-reading  [astroapi-5.divineapi.com]
   Past Lives Connection Reading: Provide users with unique insights into their past experiences and connections, enriching your website and applications with a touch of mysticism and self-discovery.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v3/past-present-future-reading  [astroapi-5.divineapi.com]
   Past-Present-Future Reading: Easily integrate this API to offer glimpses into their past, understand their present, and anticipate their future - creating engaging and personalized experiences.
@@ -249,7 +249,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
 /api/v3/power-life-reading  [astroapi-5.divineapi.com]
   Power Life Reading: Easily integrate this API into your websites and applications to provide users with personalized life readings that empower their journey.
   params: api_key*, lan (en)
-  returns: prediction
+  returns: cards
 
 /api/v5/daily-horoscope  [astroapi-5.divineapi.com]
   Daily Horoscope: This API is designed for websites, mobile apps, chatbots, CRM dashboards, or astrology portals that want to display daily horoscopes in multiple languages.
@@ -272,7 +272,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: sign, year, yearly_horoscope, special
 
 
-## Indian API (115 endpoints)
+## Indian API (124 endpoints)
 
 /indian-api/v1/antar-dasha-analysis  [astroapi-3.divineapi.com]
   Antar Dasha Analysis: Navigate the cycles of life with our Antar Dasha Analysis API, unraveling the dynamic planetary sub-periods that shape individual destinies within the realm of Indian Astrology.
@@ -563,6 +563,51 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   Month Tithi List: The Month Tithi List API returns day-wise Tithi details for an entire month based on the selected location.
   params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5)
   returns: [list of: tithi_no, tithi, paksha, start_time, end_time]
+
+/indian-api/v1/muhurat/business-start  [astroapi-3.divineapi.com]
+  Business Start Muhurat API: *The Business Start Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for starting a new business or venture in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day breakdown of muhurat timings.* --- Business Start Muhurat API ========================== The **Busin
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
+
+/indian-api/v1/muhurat/do-ghati  [astroapi-3.divineapi.com]
+  Do Ghati Muhurat API: *The Do Ghati Muhurat API is part of the Muhurat Finder suite and returns the Do Ghati muhurats for a specific date, as per Vedic astrology, dividing the day and night into muhurat periods with auspicious flags and precise start and end times.* --- Do Ghati Muhurat API ==================== The **Do Ghati Muhurat API** is part of the Muhurat Finder
+  params: api_key*, day* (24), month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, date, weekday, sunrise, sunset, day_muhurats, night_muhurats
+
+/indian-api/v1/muhurat/foundation-laying  [astroapi-3.divineapi.com]
+  Foundation Laying (Bhoomi Pujan) Muhurat API: *The Foundation Laying (Bhoomi Pujan) Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for laying a foundation or performing bhoomi pujan in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day list of muhurat timings.* --- Foundation Laying (Bhoomi Pujan) Muhurat
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
+
+/indian-api/v1/muhurat/hora  [astroapi-3.divineapi.com]
+  Hora API: *The Hora API is part of the Muhurat Finder suite and returns the planetary horas for a specific date, as per Vedic astrology, listing the day and night horas with the ruling planet, nature, and precise start and end times.* --- Hora API ======== The **Hora API** is part of the Muhurat Finder suite and returns the planetary horas for a specific dat
+  params: api_key*, day* (24), month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, date, weekday, sunrise, sunset, day_horas, night_horas
+
+/indian-api/v1/muhurat/house-entering  [astroapi-3.divineapi.com]
+  Griha Pravesh (House Entering) Muhurat API: *The Griha Pravesh (House Entering) Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for entering a new home in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day list of griha pravesh muhurats.* --- Griha Pravesh (House Entering) Muhurat API ===================
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
+
+/indian-api/v1/muhurat/jain-pachakkhan  [astroapi-3.divineapi.com]
+  Jain Pachakkhan API: *The Jain Pachakkhan API is part of the Muhurat Finder suite and returns the Jain Pachakkhan (vow) timings for a specific date, as per Jain tradition, with day and night prahar boundaries and the list of Pachakkhan periods and their timings.* --- Jain Pachakkhan API =================== The **Jain Pachakkhan API** is part of the Muhurat Finder suite
+  params: api_key*, day* (24), month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, date, weekday, sunrise, sunset, prahars, pachakkhans
+
+/indian-api/v1/muhurat/marriage  [astroapi-3.divineapi.com]
+  Marriage Muhurat API: *The Marriage Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for weddings (vivah) in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day breakdown of muhurat timings.* --- Marriage Muhurat API ==================== The **Marriage Muhurat API** is part of the Muh
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
+
+/indian-api/v1/muhurat/property-purchase  [astroapi-3.divineapi.com]
+  Property Purchase Muhurat API: *The Property Purchase Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for buying property or land in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day list of muhurat timings.* --- Property Purchase Muhurat API ============================= The **Property Pur
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
+
+/indian-api/v1/muhurat/vehicle-purchase  [astroapi-3.divineapi.com]
+  Vehicle Purchase Muhurat API: *The Vehicle Purchase Muhurat API is part of the Muhurat Finder suite and returns auspicious dates and time windows for buying a new vehicle in a given month and year, as per Vedic astrology, with notable monthly windows and a day-by-day breakdown of muhurat timings.* --- Vehicle Purchase Muhurat API ============================ The **Vehicle Purch
+  params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
+  returns: muhurat_type, month, year, month_notes, dates
 
 /indian-api/v1/nav-pancham-yoga  [astroapi-3.divineapi.com]
   Nav Pancham Yoga: Unlock the auspicious energies of partnerships with our Nav Pancham Yoga API, revealing the celestial alignments that shape compatibility and harmonious relationships as per Indian
