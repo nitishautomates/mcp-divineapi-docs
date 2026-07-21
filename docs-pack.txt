@@ -785,7 +785,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: total_transit, transit
 
 /indian-api/v2/planet-nakshatra-transit/sun  [astroapi-3.divineapi.com]
-  Planets Nakshatra Transit: The Planets Nakshatra Transit API provides detailed information on when a planet enters a specific Nakshatra or its individual Pada (quarter). The planet is selected by the final path segment (shown here as sun); valid planets: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto. The nodes rahu and ketu are NOT supported by this endpoint (the API returns a server error).
+  Planets Nakshatra Transit: The Planets Nakshatra Transit API provides detailed information on when a planet enters a specific Nakshatra or its individual Pada (quarter). The planet is selected by the final path segment (shown here as sun); valid planets: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto. The nodes rahu and ketu are not currently supported by this endpoint (may be added later).
   params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en), pada_transit* (0)
   returns: total_transit, transit
 
