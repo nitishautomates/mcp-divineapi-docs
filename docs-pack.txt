@@ -272,7 +272,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: sign, year, yearly_horoscope, special
 
 
-## Indian API (125 endpoints)
+## Indian API (139 endpoints)
 
 /indian-api/v1/antar-dasha-analysis  [astroapi-3.divineapi.com]
   Antar Dasha Analysis: Navigate the cycles of life with our Antar Dasha Analysis API, unraveling the dynamic planetary sub-periods that shape individual destinies within the realm of Indian Astrology.
@@ -668,6 +668,76 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   Vargottama Planets: Identifies which planets are vargottama (occupying the same sign in the D1 birth chart and the D9 navamsha chart), a placement considered a source of strength.
   params: BIRTH, lan (en)
   returns: [list of: name, d1_sign_no, d1_sign, d9_sign_no, d9_sign, is_vargottama, content]
+
+/indian-api/v1/varshphal/basic-astro-details  [astroapi-3.divineapi.com]
+  Varshphal Basic Astro Details API: *The Varshphal Basic Astro Details API returns the core astrological details of the annual (Varshphal) chart for the chosen year, calculated at the moment of solar return.* --- Varshphal Basic Astro Details API ================================= The **Varshphal Basic Astro Details API** is part of the Varshphal (annual horoscope) suite and returns t
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: full_name, date, year, month, day, hour, minute, gender, place, latitude, longitude, timezone, sunrise, sunset, tithi, paksha, paya, sunsign, moonsign, chandramasa, ...
+
+/indian-api/v1/varshphal/horoscope-chart/D1  [astroapi-3.divineapi.com]
+  Varshphal Horoscope Chart API: *The Varshphal Horoscope Chart API returns a divisional chart of the annual (Varshphal) horoscope as an SVG image, for the chosen year and the requested chart id (D1 to D60).* --- Varshphal Horoscope Chart API ============================= The **Varshphal Horoscope Chart API** is part of the Varshphal (annual horoscope) suite and returns a division The chart id is the final path segment (shown here as D1); valid chart ids: D1 to D60.
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: svg, data, base64_image
+
+/indian-api/v1/varshphal/mudda-dasha  [astroapi-3.divineapi.com]
+  Varshphal Mudda Dasha API: *The Varshphal Mudda Dasha API returns the Mudda Dasha (the annual dasha periods) of the Varshphal chart for the chosen year.* --- Varshphal Mudda Dasha API ========================= The **Varshphal Mudda Dasha API** is part of the Varshphal (annual horoscope) suite and returns the Mudda Dasha, the annual dasha periods of the Varshphal chart, for t
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: [list of: dasha, start_date, end_date, antar_dasha]
+
+/indian-api/v1/varshphal/muntha  [astroapi-3.divineapi.com]
+  Varshphal Muntha API: *The Varshphal Muntha API returns the Muntha (a point that advances one house each year) for the annual chart, with its house, sign and lord.* --- Varshphal Muntha API ==================== The **Varshphal Muntha API** is part of the Varshphal (annual horoscope) suite and returns the Muntha, a sensitive point that advances one house each year, for t
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: house, sign_no, sign, lord, birth_chart_house
+
+/indian-api/v1/varshphal/panchadhikari  [astroapi-3.divineapi.com]
+  Varshphal Panchadhikari API: *The Varshphal Panchadhikari API returns the Panchadhikari, the five office bearers (year lords) of the annual chart such as the Muntha Pati and Varsheshwara.* --- Varshphal Panchadhikari API =========================== The **Varshphal Panchadhikari API** is part of the Varshphal (annual horoscope) suite and returns the Panchadhikari, the five offi
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: panchadhikari, year_lord
+
+/indian-api/v1/varshphal/patyanini-dasha  [astroapi-3.divineapi.com]
+  Varshphal Patyanini Dasha API: *The Varshphal Patyanini Dasha API returns the Patyanini Dasha periods of the annual (Varshphal) chart for the chosen year.* --- Varshphal Patyanini Dasha API ============================= The **Varshphal Patyanini Dasha API** is part of the Varshphal (annual horoscope) suite and returns the Patyanini Dasha periods of the annual chart for the chose
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: [list of: dasha, krishamsha, patyamsha, duration_days, start_date, end_date, antar_dasha]
+
+/indian-api/v1/varshphal/planetary-positions  [astroapi-3.divineapi.com]
+  Varshphal Planetary Positions API: *The Varshphal Planetary Positions API returns the positions of the planets in the annual (Varshphal) chart for the chosen year.* --- Varshphal Planetary Positions API ================================= The **Varshphal Planetary Positions API** is part of the Varshphal (annual horoscope) suite and returns the positions of the planets in the annual c
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: date, time, latitude, longitude, timezone, planets
+
+/indian-api/v1/varshphal/planetary-strengths  [astroapi-3.divineapi.com]
+  Varshphal Planetary Strengths API: *The Varshphal Planetary Strengths API returns the planetary strengths of the annual chart, such as Harsha Bala, Pancha Vargeeya Bala and Dwadasha Vargeeya Bala, for the chosen year.* --- Varshphal Planetary Strengths API ================================= The **Varshphal Planetary Strengths API** is part of the Varshphal (annual horoscope) suite an
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: harsha_bala, pancha_vargiya_bala
+
+/indian-api/v1/varshphal/sahams  [astroapi-3.divineapi.com]
+  Varshphal Sahams API: *The Varshphal Sahams API returns the Sahams (sensitive points such as Punya Saham) computed for the annual chart for the chosen year.* --- Varshphal Sahams API ==================== The **Varshphal Sahams API** is part of the Varshphal (annual horoscope) suite and returns the Sahams, the sensitive points such as Punya Saham computed for the annual
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: punya_saham, guru_saham, vidya_saham, yasha_saham, mitra_saham, mahatmya_saham, asha_saham, samarthya_saham, bhratri_saham, gaurava_saham, pitri_saham, raja_saham, matri_saham, putra_saham, jeeva_saham, roga_saham, karma_saham, manmatha_saham, kali_saham, kshama_saham, ...
+
+/indian-api/v1/varshphal/tajika-aspect  [astroapi-3.divineapi.com]
+  Varshphal Tajika Aspect API: *The Varshphal Tajika Aspect API returns the Tajika aspects between the planets in the annual (Varshphal) chart for the chosen year.* --- Varshphal Tajika Aspect API =========================== The **Varshphal Tajika Aspect API** is part of the Varshphal (annual horoscope) suite and returns the Tajika aspects between the planets in the annual chart
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: long_table, short_table
+
+/indian-api/v1/varshphal/tri-pataki-chakra  [astroapi-3.divineapi.com]
+  Varshphal Tri Pataki Chakra API: *The Varshphal Tri Pataki Chakra API returns the Tri Pataki Chakra of the annual (Varshphal) chart as an SVG image for the chosen year.* --- Varshphal Tri Pataki Chakra API =============================== The **Varshphal Tri Pataki Chakra API** is part of the Varshphal (annual horoscope) suite and returns the Tri Pataki Chakra of the annual chart a
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: chart, chart_data, vedhas, content
+
+/indian-api/v1/varshphal/varsha-pravesh  [astroapi-3.divineapi.com]
+  Varshphal Varsha Pravesh API: *The Varshphal Varsha Pravesh API returns the exact moment of solar return (Varsha Pravesh) when the annual chart for the chosen year begins, calculated from the birth details and the varshphal_year.* --- Varshphal Varsha Pravesh API ============================ The **Varshphal Varsha Pravesh API** is part of the Varshphal (annual horoscope) suite
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: varshphal_year, age, varsha_pravesh, weekday
+
+/indian-api/v1/varshphal/yogas  [astroapi-3.divineapi.com]
+  Varshphal Yogas API: *The Varshphal Yogas API returns the Tajika yogas (such as Ikabala and Induvara yoga) present in the annual (Varshphal) chart for the chosen year.* --- Varshphal Yogas API =================== The **Varshphal Yogas API** is part of the Varshphal (annual horoscope) suite and returns the Tajika yogas, such as Ikabala and Induvara yoga, present in the
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: ikabala_yoga, induvara_yoga, ithasala_yoga, ishrafa_yoga, nakta_yoga, yamaya_yoga, manau_yoga, kamboola_yoga, gairi_kamboola_yoga, khallasara_yoga, rudda_yoga, duhphali_kuttha_yoga, dutthottha_davira_yoga, tambira_yoga, kuttha_yoga, durapha_yoga
+
+/indian-api/v1/varshphal/yogini-dasha  [astroapi-3.divineapi.com]
+  Varshphal Yogini Dasha API: *The Varshphal Yogini Dasha API returns the Yogini Dasha periods of the annual (Varshphal) chart for the chosen year.* --- Varshphal Yogini Dasha API ========================== The **Varshphal Yogini Dasha API** is part of the Varshphal (annual horoscope) suite and returns the Yogini Dasha periods of the annual chart for the chosen year. Provide th
+  params: BIRTH, varshphal_year* (2024), lan (en)
+  returns: [list of: dasha, lord, start_date, end_date, antar_dasha]
 
 /indian-api/v1/vimshottari-dasha  [astroapi-3.divineapi.com]
   Vimshottari Dasha: Navigate the cycles of life with our Vimshottari Dasha API, unraveling the dynamic planetary periods that shape individual destinies within the realm of Indian Astrology.
