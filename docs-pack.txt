@@ -272,7 +272,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: sign, year, yearly_horoscope, special
 
 
-## Indian API (124 endpoints)
+## Indian API (125 endpoints)
 
 /indian-api/v1/antar-dasha-analysis  [astroapi-3.divineapi.com]
   Antar Dasha Analysis: Navigate the cycles of life with our Antar Dasha Analysis API, unraveling the dynamic planetary sub-periods that shape individual destinies within the realm of Indian Astrology.
@@ -633,6 +633,11 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   Pratyantar Dasha Analysis: Navigate the cycles of life with our Pratyantar Dasha Analysis API, unraveling the innermost planetary sub-periods that refine, trigger, and time events within the broader Dasha
   params: api_key*, maha_dasha* (rahu), antar_dasha* (moon), pratyantar_dasha* (mars), lan (en)
   returns: maha_dasha, antar_dasha, pratyantar_dasha, analysis
+
+/indian-api/v1/rudraksha-suggestion  [astroapi-3.divineapi.com]
+  Rudraksh Suggestion: *Discover the Rudraksh Suggestion API, which recommends the most suitable Rudraksha (mukhi) beads for an individual based on their planetary chart, according to Indian Vedic Astrology, across life, lucky and dasha categories with mukhi number, deity, mantra and the day to wear.* --- Rudraksh Suggestion =================== Discover your personalized
+  params: BIRTH, lan (en)
+  returns: life_rudraksha, lucky_rudraksha, dasha_rudraksha
 
 /indian-api/v1/sankranti-festivals  [astroapi-3.divineapi.com]
   Sankranti Festivals: Get the twelve solar Sankranti transitions for any year and location, each with its date, exact transition moment and the auspicious Punya Kala and Maha Punya Kala windows, plus
