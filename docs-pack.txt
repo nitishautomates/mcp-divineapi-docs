@@ -10,7 +10,7 @@ AUTH (every request)
 
 ERROR SEMANTICS (depends on the host)
   - Legacy hosts astroapi-1 .. astroapi-5: ALWAYS return HTTP 200. Check the JSON
-    body: success=1 means ok, success=3 means auth error (msg field explains).
+    body: success=1 means ok, success=2 validation error, success=3 auth error (msg field explains).
   - Structured hosts astroapi-7, astroapi-8, pdf: return real HTTP 4xx with body
     {status:"error", error_code, code, error, message}. Common:
       400 AUTHORIZATION_HEADER_MISSING (Authorization header missing / bad params)
@@ -77,6 +77,25 @@ DEEPER DOCS
   - This pack (raw):    https://developers.divineapi.com/docs-pack.txt
   - Human docs:         https://developers.divineapi.com
 
+DOMAIN GOTCHAS (astrology-specific traps; get these right)
+  - Sidereal vs tropical: Indian / Vedic endpoints are SIDEREAL, Western endpoints
+    are TROPICAL. Do not carry a Western house_system onto a Vedic call.
+  - tzone is a plain decimal offset (5.5 = IST) and is NOT adjusted for DST. Send the
+    real offset for the birth moment, never "+5:30" or a zone name.
+  - Rahu and Ketu are the lunar nodes (shadow points), not planets. Endpoints that
+    take node_type accept the true vs mean node variants; choose one deliberately.
+  - Horoscope timeframes are keyword selectors (today / current / prev / next),
+    never calendar dates.
+  - Two-person work (synastry, composite, match-making, couple reports) uses the
+    p1_ / p2_ prefixed birth blocks; api_key is sent once, unprefixed.
+  - house_system (Western charts) defaults to Placidus; pass a friendly name or a
+    single letter (see HOUSE_SYSTEM above).
+  - Legacy hosts (astroapi-1..5) return HTTP 200 even on an auth or validation
+    error. Always check the body's success field (1 = ok, 2 = validation error, 3 = auth error); do not
+    trust the HTTP status alone.
+  - place is a lowercase city string; sec is required on birth endpoints (send 0 if
+    unknown) or the call is rejected.
+
 NOTATION IN CARDS
   <path>  [<host>]
     <summary>: <description>
@@ -84,6 +103,26 @@ NOTATION IN CARDS
     returns: field_a, field_b, nested_obj, ...   (top-level response fields)
 ============================================================================
 
+COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + returns)
+  Daily horoscope (one sign)                     -> /api/v5/daily-horoscope
+  Weekly / monthly / yearly horoscope            -> /api/v5/weekly-horoscope
+  Western natal chart (planet positions)         -> /western-api/v1/planetary-positions
+  Western natal wheel (SVG + image)              -> /western-api/v2/natal-wheel-chart
+  Vedic kundli / divisional chart (D1, D9, ...)  -> /indian-api/v1/horoscope-chart/D1
+  Vedic basics (rashi, nakshatra, tithi)         -> /indian-api/v3/basic-astro-details
+  Daily Panchang                                 -> /indian-api/v2/find-panchang
+  Nakshatra for a date                           -> /indian-api/v2/find-nakshatra
+  Auspicious timings / muhurta (incl. nishita)   -> /indian-api/v1/auspicious-timings
+  Match-making / guna milan (Ashtakoot)          -> /indian-api/v2/ashtakoot-milan
+  Quick love compatibility (by sign)             -> /api/v2/love-compatibility
+  Dasha / planetary periods                      -> /indian-api/v1/antar-dasha-analysis
+  Current transits (Western)                     -> /western-api/v1/transit/basic
+  Transit for a custom moment                    -> /western-api/v1/transit/custom
+  Numerology core numbers                        -> /numerology/v1/core-numbers
+  Daily tarot                                    -> /api/v2/daily-tarot
+  Lal Kitab planet analysis                      -> /indian-api/v1/lal-kitab/planet-analysis
+  Downloadable kundli PDF report                 -> /indian-api/v2/kundali-sampoorna
+============================================================================
 
 
 ## Horoscope and Tarot v2 API (29 endpoints)
@@ -671,7 +710,7 @@ NOTATION IN CARDS
   returns: lucky_stone, life_stone, dasha_stone
 
 /indian-api/v2/grah-gochar/sun  [astroapi-3.divineapi.com]
-  Grah Gochar (Planet Transit API): The Grah Gochar (Planet Transit) API provides detailed planetary transit data, identifying when a planet moves from one zodiac sign to another.
+  Grah Gochar (Planet Transit API): The Grah Gochar (Planet Transit) API provides detailed planetary transit data, identifying when a planet moves from one zodiac sign to another. The planet is selected by the final path segment (shown here as sun); valid planets: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto, rahu, ketu.
   params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
   returns: total_transit, transit
 
@@ -746,7 +785,7 @@ NOTATION IN CARDS
   returns: total_transit, transit
 
 /indian-api/v2/planet-nakshatra-transit/sun  [astroapi-3.divineapi.com]
-  Planets Nakshatra Transit: The Planets Nakshatra Transit API provides detailed information on when a planet enters a specific Nakshatra or its individual Pada (quarter).
+  Planets Nakshatra Transit: The Planets Nakshatra Transit API provides detailed information on when a planet enters a specific Nakshatra or its individual Pada (quarter). The planet is selected by the final path segment (shown here as sun); valid planets: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto. The nodes rahu and ketu are NOT supported by this endpoint (the API returns a server error).
   params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en), pada_transit* (0)
   returns: total_transit, transit
 
