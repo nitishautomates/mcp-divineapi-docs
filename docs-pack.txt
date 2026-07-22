@@ -300,7 +300,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: kendra, trikone, trishadaya, trik, maraka, dhana
 
 /indian-api/v1/bhava-kundli/1  [astroapi-3.divineapi.com]
-  Bhava Kundli: This API provides SVG and base64-encoded Kundli charts, offering insights through different Bhava (house) systems.
+  Bhava Kundli: This API provides SVG and base64-encoded Kundli charts, offering insights through different Bhava (house) systems. The chart id is the final path segment (shown here as 1); valid chart ids are the numbers 1 to 12 only. D-style divisional codes (D1, D9 and so on) are not supported by this endpoint.
   params: BIRTH, lan (en), planet_color* (#333333), sign_color* (#333333), line_color* (#333333), chart_color* (#ffffff), chart_type* (south)
   returns: svg, data, base64_image
 
@@ -315,7 +315,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: trinona_reduction, ekadhipatya_reductions, shodaya_pinda
 
 /indian-api/v1/bhinnashtakvarga/sarvashtakavarga/D1  [astroapi-3.divineapi.com]
-  Sarvashtakavarga: Embark on a yogic journey through time with our Sarvashtakavarga API, unraveling the sequential planetary periods that bestow unique spiritual and material experiences within the
+  Sarvashtakavarga: Embark on a yogic journey through time with our Sarvashtakavarga API, unraveling the sequential planetary periods that bestow unique spiritual and material experiences within the The chart is the final path segment (shown here as D1); valid charts: D1, D2, D3, D4, D7, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60. D5, D6, D8, D11 and numeric ids are not supported.
   params: BIRTH, lan (en)
   returns: table, chart
 
@@ -385,7 +385,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: moon_sign, month, tithi, vaar, nakshatra, yoga, karana
 
 /indian-api/v1/horoscope-chart/D1  [astroapi-3.divineapi.com]
-  Horoscope Charts: Visualize cosmic influences with the “Horoscope Charts” API, which generates detailed astrological charts (D1, divisional charts, cuspal, Chalit, Sun/Moon charts, etc.) based on
+  Horoscope Charts: Visualize cosmic influences with the “Horoscope Charts” API, which generates detailed astrological charts (D1, divisional charts, cuspal, Chalit, Sun/Moon charts, etc.) based on The chart id is the final path segment (shown here as D1); valid chart ids: D1, D2, D3, D4, D5, D7, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60, plus chalit, SUN, MOON and cuspal. D6, D8, D11 and numeric ids are not supported.
   params: BIRTH, lan (en), show_planet_degree* (1), show_planet_retro* (1), show_modern_planets* (1), planet_color* (#333333), sign_color* (#333333), line_color* (#333333), chart_color* (#ffffff), chart_type* (south)
   returns: svg, data, base64_image
 
@@ -535,7 +535,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: year, vishu_kani, thrissur_pooram, attukal_pongala, makara_vilakku, malayalam_new_year, ashtami_rohini, onam, ganesha_chaturthi, vidyarambham, mandalakala_begins, guruvayur_ekadashi, mandala_pooja
 
 /indian-api/v1/matching/horoscope-chart/D1  [astroapi-3.divineapi.com]
-  Matching Horoscope Chart: Align celestial destinies for meaningful partnerships with the Matching Horoscope Chart API, which compares the intricate astrological charts of two individuals to reveal
+  Matching Horoscope Chart: Align celestial destinies for meaningful partnerships with the Matching Horoscope Chart API, which compares the intricate astrological charts of two individuals to reveal The chart id is the final path segment (shown here as D1); valid chart ids: D1, D2, D3, D4, D7, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60, plus chalit, SUN, MOON and cuspal. D5, D6, D8, D11 and numeric ids are not supported.
   params: api_key*, P1_BIRTH, P2_BIRTH, lan (en)
   returns: p1, p2
 
@@ -910,7 +910,7 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: total_transit, transit
 
 /indian-api/v2/planet-retrograde-transit/mars  [astroapi-3.divineapi.com]
-  Planets Retrograde Transit: The Planets Retrograde Transit API provides astrologically significant retrograde and progressive (direct) dates for major planets.
+  Planets Retrograde Transit: The Planets Retrograde Transit API provides astrologically significant retrograde and progressive (direct) dates for major planets. The planet is selected by the final path segment (shown here as mars); valid planets: mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto. Sun, moon, rahu and ketu are not supported by this endpoint.
   params: api_key*, month* (05), year* (2023), place (New Delhi), lat* (28.6139), lon* (77.2090), tzone* (5.5), lan (en)
   returns: total_transit, transit
 
@@ -1198,12 +1198,12 @@ COMMON TASKS (what do I call for...?  ->  endpoint; open that card for params + 
   returns: [list of: planetOne, planetTwo, aspect, orb]
 
 /western-api/v2/general-house-report/sun  [astroapi-4.divineapi.com]
-  General House Report: This endpoint is part of the Western Astrology flow and is useful for presenting house-wise narrative reports to users.
+  General House Report: This endpoint is part of the Western Astrology flow and is useful for presenting house-wise narrative reports to users. The planet is the final path segment (shown here as sun); valid values: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto, chiron, northnode, southnode, mc. Note: the lunar nodes work only as the single words northnode and southnode (north_node, rahu and ketu are rejected), and ascendant is not supported by this endpoint.
   params: BIRTH, lan (en), house_system* (P)
   returns: planet_name, house, report
 
 /western-api/v2/general-sign-report/sun  [astroapi-4.divineapi.com]
-  General Sign Report: Discover the essence of your astrological identity with the General Sign Report API, providing personalized insights into a planet’s sign placement (Sun, Moon, Mercury, etc.) and
+  General Sign Report: Discover the essence of your astrological identity with the General Sign Report API, providing personalized insights into a planet’s sign placement (Sun, Moon, Mercury, etc.) and The planet is the final path segment (shown here as sun) and is case-insensitive; valid values: sun, moon, mercury, venus, mars, jupiter, saturn, uranus, neptune, pluto, chiron, northnode, southnode, mc.
   params: BIRTH, lan (en), house_system* (P)
   returns: planet_name, sign_name, report
 
